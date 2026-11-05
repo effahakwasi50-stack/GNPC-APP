@@ -1,0 +1,205 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>GNPC Fiscal &amp; Entitlement Reconciliation Suite</title>
+<script src="https://cdn.tailwindcss.com/3.4.17"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+:root{--bg:#f4f1ea;--card:#fff;--ink:#1c2530;--mute:#667085;--line:#e3ded3;--hd:#0b3d2e;--accent:#b8860b;--state:#0f7b4f;--cost:#6b7a90;--ctr:#c2552b;--roy:#b8860b;--inp:#faf8f3;
+box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#0f1512;--card:#17201b;--ink:#e8ece9;--mute:#9aa8a0;--line:#2a372f;--hd:#06231a;--inp:#101813;--state:#3ecf8e;--ctr:#f08a5d;--roy:#e0b341;--cost:#8fa0b8;color-scheme:dark}}
+html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{background:var(--bg);color:var(--ink);font-family:Inter,system-ui,-apple-system,"Segoe UI",sans-serif;margin:0}
+.card{background:var(--card);border:1px solid var(--line);border-radius:14px}
+.mute{color:var(--mute)}
+.inp{background:var(--inp);border:1px solid var(--line);border-radius:8px;padding:.5rem .6rem;width:100%;color:var(--ink);font-variant-numeric:tabular-nums}
+.inp:disabled{opacity:.6}
+.seg button{flex:1;padding:.45rem .3rem;font-size:.8rem;border:1px solid var(--line);background:var(--inp);color:var(--ink)}
+.seg button:first-child{border-radius:8px 0 0 8px}.seg button:last-child{border-radius:0 8px 8px 0}
+.seg button.on{background:var(--hd);color:#fff;border-color:var(--hd)}
+.num{font-variant-numeric:tabular-nums}
+table{border-collapse:collapse;width:100%}th,td{padding:.55rem .7rem;border-bottom:1px solid var(--line);text-align:left;font-size:.85rem}
+th{font-size:.7rem;text-transform:uppercase;letter-spacing:.05em;color:var(--mute)}td.r,th.r{text-align:right}
+input[type=range]{width:100%;accent-color:var(--state)}
+.hdr{background:var(--hd);color:#fff;padding-top:env(safe-area-inset-top,0px)}
+.warn{background:rgba(194,85,43,.12);border:1px solid var(--ctr);border-radius:10px;padding:.6rem .8rem;font-size:.85rem}
+</style>
+</head>
+<body>
+<header class="hdr">
+  <div class="max-w-7xl mx-auto px-4 sm:px-6 py-5 flex flex-wrap items-center justify-between gap-3">
+    <div>
+      <div class="text-xs tracking-widest uppercase" style="color:#e0b341">Ghana National Petroleum Corporation</div>
+      <h1 class="text-xl sm:text-2xl font-bold">GNPC Upstream Fiscal Reconciliation Suite</h1>
+      <p class="text-sm opacity-80">Act 919 &amp; Petroleum Agreement Equity Allocation Engine</p>
+    </div>
+    <div class="text-xs opacity-80 text-right">GNPC Fiscal &amp; Entitlement Reconciliation Suite<br>Ghana Upstream Fiscal Engine</div>
+  </div>
+</header>
+
+<main class="max-w-7xl mx-auto px-4 sm:px-6 py-6 grid lg:grid-cols-[320px_1fr] gap-6">
+  <aside class="card p-5 h-fit space-y-5">
+    <div>
+      <div class="text-xs font-semibold uppercase mute mb-2">Field preset</div>
+      <div class="seg flex" id="seg"></div>
+      <label class="text-xs mute mt-3 block">State royalty rate (%)</label>
+      <input id="roy" type="number" step="0.1" min="0" max="100" class="inp">
+    </div>
+    <div>
+      <label class="text-xs font-semibold uppercase mute">Monthly gross production (bbls)</label>
+      <input id="q" type="number" step="1000" min="0" class="inp mt-1">
+      <input id="qs" type="range" min="0" max="3000000" step="5000" class="mt-2">
+    </div>
+    <div>
+      <label class="text-xs font-semibold uppercase mute">Achieved crude price ($/bbl)</label>
+      <input id="p" type="number" step="0.5" min="0" class="inp mt-1">
+      <input id="ps" type="range" min="30" max="140" step="0.5" class="mt-2">
+    </div>
+    <div>
+      <label class="text-xs font-semibold uppercase mute">Monthly operating costs ($ USD)</label>
+      <input id="c" type="number" step="100000" min="0" class="inp mt-1">
+      <input id="cs" type="range" min="0" max="150000000" step="500000" class="mt-2">
+    </div>
+    <div>
+      <label class="text-xs font-semibold uppercase mute">Cost recovery cap (% of net production)</label>
+      <input id="cap" type="number" step="1" min="0" max="100" class="inp mt-1">
+    </div>
+    <div>
+      <div class="text-xs font-semibold uppercase mute">GNPC equity interest (%)</div>
+      <label class="text-xs mute mt-2 block">Carried interest (Act 919 default 15%)</label>
+      <input id="car" type="number" step="0.5" min="0" max="100" class="inp">
+      <label class="text-xs mute mt-2 block">Additional paying interest: <b id="payv" class="num"></b></label>
+      <input id="pay" type="range" min="0" max="5" step="0.5">
+      <div class="text-sm mt-2">Total GNPC equity: <b id="eqv" class="num"></b></div>
+    </div>
+    <div id="msg" class="warn hidden"></div>
+  </aside>
+
+  <section class="space-y-6 min-w-0">
+    <div class="grid sm:grid-cols-2 xl:grid-cols-4 gap-4" id="kpis"></div>
+    <div class="grid xl:grid-cols-2 gap-6">
+      <div class="card p-4"><h2 class="font-semibold mb-1">Barrel waterfall</h2><p class="text-xs mute mb-2">Gross → royalty → cost recovery → GNPC profit oil → contractor profit oil</p><div style="height:320px"><canvas id="c1"></canvas></div></div>
+      <div class="card p-4"><h2 class="font-semibold mb-1">Price sensitivity</h2><p class="text-xs mute mb-2">State revenue (USD) at $50–$120/bbl, current inputs held constant</p><div style="height:320px"><canvas id="c2"></canvas></div></div>
+    </div>
+    <div class="card p-4">
+      <div class="flex flex-wrap items-center justify-between gap-3 mb-3">
+        <div><h2 class="font-semibold">Audit &amp; reconciliation schedule</h2><p class="text-xs mute">Line-by-line fiscal waterfall with formulas</p></div>
+        <div class="flex gap-2">
+          <button id="exp" class="px-4 py-2 rounded-lg text-sm font-semibold text-white" style="background:var(--hd)">Export Audit Sheet (CSV)</button>
+          <button id="cp" class="px-4 py-2 rounded-lg text-sm font-semibold card">Copy CSV</button>
+        </div>
+      </div>
+      <div class="overflow-x-auto"><table><thead><tr><th>#</th><th>Line item</th><th>Formula</th><th class="r">Value</th><th>Unit</th></tr></thead><tbody id="tb"></tbody></table></div>
+      <p id="note" class="text-xs mute mt-3"></p>
+    </div>
+  </section>
+</main>
+<footer class="max-w-7xl mx-auto px-6 pb-8 text-xs mute">Indicative calculations under Act 919 and model petroleum agreement terms; actual entitlements are governed by the executed agreement for each contract area.</footer>
+
+<script>
+const PRESETS={Jubilee:5,TEN:5,Sankofa:7.5,Custom:10};
+const S={field:'Jubilee',roy:5,q:1200000,p:75,c:45000000,cap:70,car:15,pay:0};
+const $=id=>document.getElementById(id);
+const num=v=>{v=parseFloat(v);return isFinite(v)?v:0};
+const clamp=(v,a,b)=>Math.min(Math.max(v,a),b);
+const fU=v=>'$'+Math.round(v).toLocaleString('en-US');
+const fM=v=>Math.abs(v)>=1e9?'$'+(v/1e9).toFixed(2)+'B':'$'+(v/1e6).toFixed(2)+'M';
+const fB=v=>Math.round(v).toLocaleString('en-US');
+const fP=v=>(v*100).toFixed(2)+'%';
+
+function calc(s){
+  const w=[],Q=Math.max(0,s.q),P=Math.max(0,s.p),C=Math.max(0,s.c);
+  if(P===0&&C>0)w.push('Price is zero: cost barrels cannot be computed, so no costs are recovered.');
+  const rr=clamp(s.roy,0,100)/100,cap=clamp(s.cap,0,100)/100,eq=clamp(s.car+s.pay,0,100)/100;
+  const roy=Q*rr,net=Q-roy,capB=cap*net;
+  const req=P>0?C/P:0,cost=Math.min(req,capB);
+  const unB=Math.max(0,req-cost),unU=unB*P;
+  const profit=net-cost,gp=profit*eq,cp=profit-gp;
+  const ghana=roy+gp,ctr=cost+cp,gross=Q*P,stateU=ghana*P,ctrU=ctr*P;
+  const take=gross>0?stateU/gross:0;
+  if(unB>0)w.push('Cost recovery ceiling binding: '+fU(unU)+' ('+fB(unB)+' bbls) of claimed costs is carried forward.');
+  if(Math.abs(ghana+ctr-Q)>0.5)w.push('Reconciliation check failed: barrels do not sum to gross.');
+  return {Q,P,C,rr,cap,eq,roy,net,capB,req,cost,unB,unU,profit,gp,cp,ghana,ctr,gross,stateU,ctrU,take,w};
+}
+function sens(s){const o=[];for(let p=50;p<=120;p+=5)o.push(calc({...s,p}).stateU);return o}
+
+function rows(r,s){return [
+ ['1','Gross production (Q_gross)','Input',r.Q,'bbls'],
+ ['2','Royalty rate','Field preset: '+s.field,r.rr*100,'%'],
+ ['3','State royalty (B_royalty)','Q_gross × Royalty rate',r.roy,'bbls'],
+ ['4','Net production (Q_net)','Q_gross − B_royalty',r.net,'bbls'],
+ ['5','Achieved price','Input',r.P,'$/bbl'],
+ ['6','Monthly costs claimed','Input (OPEX + amortised CAPEX)',r.C,'USD'],
+ ['7','Cost barrels requested','Costs ÷ Price',r.req,'bbls'],
+ ['8','Cost recovery ceiling','Cap% × Q_net ('+(r.cap*100).toFixed(0)+'%)',r.capB,'bbls'],
+ ['9','Cost barrels claimed','min(line 7, line 8)',r.cost,'bbls'],
+ ['10','Unrecovered costs carried forward','(line 7 − line 9) × Price',r.unU,'USD'],
+ ['11','Profit oil (Q_profit)','Q_net − Cost barrels',r.profit,'bbls'],
+ ['12','GNPC equity (carried + paying)','Carried '+s.car+'% + Paying '+s.pay+'%',r.eq*100,'%'],
+ ['13','GNPC profit barrels','Q_profit × GNPC equity',r.gp,'bbls'],
+ ['14','Contractor profit barrels','Q_profit − GNPC profit',r.cp,'bbls'],
+ ['15','Total Ghana barrels','B_royalty + GNPC profit',r.ghana,'bbls'],
+ ['16','Contractor total barrels','Cost barrels + Contractor profit',r.ctr,'bbls'],
+ ['17','Gross revenue','Q_gross × Price',r.gross,'USD'],
+ ['18','State revenue','Total Ghana barrels × Price',r.stateU,'USD'],
+ ['19','Contractor revenue','Contractor barrels × Price',r.ctrU,'USD'],
+ ['20','Effective state take','State revenue ÷ Gross revenue',r.take*100,'%'],
+ ['21','Control check (Ghana + Contractor − Gross)','Must equal 0',r.ghana+r.ctr-r.Q,'bbls']];}
+
+const css=n=>getComputedStyle(document.documentElement).getPropertyValue(n).trim()||'#888';
+let c1,c2;
+function render(){
+  const r=calc(S);
+  $('payv').textContent=S.pay.toFixed(1)+'%';$('eqv').textContent=(S.car+S.pay).toFixed(1)+'%';
+  const m=$('msg');m.classList.toggle('hidden',!r.w.length);m.innerHTML=r.w.map(x=>'<div>⚠ '+x+'</div>').join('');
+  const k=[
+   ['Total gross revenue',fM(r.gross),fB(r.Q)+' bbls @ $'+r.P.toFixed(2)],
+   ['Total state take value',fM(r.stateU),'Effective state take '+fP(r.take)],
+   ['GNPC total physical entitlement',fB(r.ghana)+' bbls','Royalty '+fB(r.roy)+' + GNPC profit '+fB(r.gp)],
+   ['Contractor net take',fB(r.ctr)+' bbls',fM(r.ctrU)+' · '+fP(r.gross>0?r.ctrU/r.gross:0)+' of gross']];
+  $('kpis').innerHTML=k.map((x,i)=>'<div class="card p-4" style="border-top:3px solid '+(i==1?'var(--state)':i==3?'var(--ctr)':'var(--accent)')+'"><div class="text-xs uppercase mute font-semibold">'+x[0]+'</div><div class="text-2xl font-bold mt-1 num">'+x[1]+'</div><div class="text-xs mute mt-1">'+x[2]+'</div></div>').join('');
+  $('tb').innerHTML=rows(r,S).map(x=>'<tr><td class="mute">'+x[0]+'</td><td class="font-medium">'+x[1]+'</td><td class="mute">'+x[2]+'</td><td class="r num font-semibold">'+(x[4]=='USD'?fU(x[3]):x[3].toLocaleString('en-US',{maximumFractionDigits:2}))+'</td><td class="mute">'+x[4]+'</td></tr>').join('');
+  $('note').textContent=r.unU>0?'Carry-forward balance of '+fU(r.unU)+' flagged for the next reconciliation period.':'No carry-forward: all claimed costs are recovered within the ceiling.';
+  const txt=css('--mute'),ln=css('--line');
+  const wf=[[0,r.Q],[r.net,r.Q],[r.profit,r.net],[r.ctr-r.cost>=0?r.cp:0,r.profit],[0,r.cp]];
+  const d1={labels:['Gross','Royalty','Cost recovery','GNPC profit oil','Contractor profit oil'],datasets:[{data:wf,backgroundColor:[css('--cost'),css('--roy'),css('--cost'),css('--state'),css('--ctr')],borderRadius:4}]};
+  const o1={responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false},tooltip:{callbacks:{label:i=>fB(i.raw[1]-i.raw[0])+' bbls'}}},scales:{x:{ticks:{color:txt},grid:{display:false}},y:{ticks:{color:txt,callback:v=>(v/1e3)+'k'},grid:{color:ln},title:{display:true,text:'Barrels',color:txt}}}};
+  if(c1){c1.data=d1;c1.options=o1;c1.update()}else c1=new Chart($('c1'),{type:'bar',data:d1,options:o1});
+  const px=[];for(let p=50;p<=120;p+=5)px.push('$'+p);
+  const d2={labels:px,datasets:[{label:'State revenue',data:sens(S),borderColor:css('--state'),backgroundColor:css('--state')+'22',fill:true,tension:.3,pointRadius:2},
+    {label:'Current price',data:px.map((_,i)=>(50+i*5)===Math.round(S.p/5)*5&&S.p>=50&&S.p<=120?r.stateU:null),borderColor:css('--ctr'),backgroundColor:css('--ctr'),pointRadius:7,showLine:false}]};
+  const o2={responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:txt}},tooltip:{callbacks:{label:i=>i.dataset.label+': '+fM(i.raw)}}},scales:{x:{ticks:{color:txt},grid:{display:false},title:{display:true,text:'Crude price ($/bbl)',color:txt}},y:{ticks:{color:txt,callback:v=>'$'+(v/1e6)+'M'},grid:{color:ln},title:{display:true,text:'State revenue (USD)',color:txt}}}};
+  if(c2){c2.data=d2;c2.options=o2;c2.update()}else c2=new Chart($('c2'),{type:'line',data:d2,options:o2});
+}
+function csv(){
+  const r=calc(S),q=v=>'"'+String(v).replace(/"/g,'""')+'"';
+  const h=['GNPC Fiscal Reconciliation Audit Sheet','Field',S.field,'Generated',new Date().toISOString().slice(0,10)];
+  const L=[h.map(q).join(','),['#','Line item','Formula','Value','Unit'].map(q).join(',')];
+  rows(r,S).forEach(x=>L.push([x[0],x[1],x[2],Number(x[3]).toFixed(2),x[4]].map(q).join(',')));
+  return L.join('\r\n');
+}
+function setField(f){S.field=f;if(f!=='Custom')S.roy=PRESETS[f];else S.roy=PRESETS.Custom;sync();render()}
+function sync(){
+  $('seg').innerHTML=Object.keys(PRESETS).map(f=>'<button class="'+(S.field===f?'on':'')+'" data-f="'+f+'">'+f+'</button>').join('');
+  $('roy').value=S.roy;$('roy').disabled=S.field!=='Custom';
+  $('q').value=S.q;$('qs').value=S.q;$('p').value=S.p;$('ps').value=S.p;$('c').value=S.c;$('cs').value=S.c;$('cap').value=S.cap;$('car').value=S.car;$('pay').value=S.pay;
+}
+$('seg').addEventListener('click',e=>{const f=e.target.dataset.f;if(f)setField(f)});
+[['roy','roy'],['q','q'],['qs','q'],['p','p'],['ps','p'],['c','c'],['cs','c'],['cap','cap'],['car','car'],['pay','pay']].forEach(([id,k])=>{
+  $(id).addEventListener('input',e=>{let v=num(e.target.value);if(v<0)v=0;if(k==='roy'||k==='cap'||k==='car')v=Math.min(v,100);if(k==='pay')v=clamp(v,0,5);S[k]=v;
+    if(!id.endsWith('s')&&id!=='roy'&&id!=='cap'&&id!=='car'&&id!=='pay'){$(id+'s')&&($(id+'s').value=v)} else if(id.endsWith('s')&&id.length==2){$(k).value=v}
+    if(id==='pay'){}render()});
+});
+$('exp').addEventListener('click',async()=>{
+  const data=csv(),fn='GNPC_Audit_Sheet_'+S.field+'.csv';
+  try{const d=await claude.use('downloads');if(d){await d.save({filename:fn,data});return}}catch(e){if(e&&e.code==='declined')return}
+  try{const a=document.createElement('a');a.href=URL.createObjectURL(new Blob([data],{type:'text/csv'}));a.download=fn;a.click()}catch(e){}
+});
+$('cp').addEventListener('click',async()=>{try{await navigator.clipboard.writeText(csv());$('cp').textContent='Copied ✓'}catch(e){$('cp').textContent='Copy unavailable'}setTimeout(()=>$('cp').textContent='Copy CSV',1800)});
+matchMedia('(prefers-color-scheme: dark)').addEventListener('change',render);
+sync();render();
+</script>
+</body>
+</html>
